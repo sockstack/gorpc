@@ -15,6 +15,7 @@ import (
 )
 
 // gorpc Server, a Server can have one or more Services
+// gorpc 服务端
 type Server struct {
 	opts    *ServerOptions
 	service Service
@@ -24,18 +25,57 @@ type Server struct {
 }
 
 // NewServer creates a Server, Support to pass in ServerOption parameters
+/**
+ * 创建服务端
+ *
+ * NewServer
+ * + RegisterService(serviceName string, svr interface{}) error	// 注册服务
+ * + RegisterRegister(sd *ServiceDesc, svr interface{})			// 注册服务
+ * + Serve()													// 启动 tcp 服务端
+ * + ServeHttp()												// 启动 http 服务端
+ * + Close()													// 关闭服务端
+ * + InitPlugins() error 										//插件初始化
+ *
+ * 服务端流程:
+ *
+ * ServerOption(服务配置)						ServiceDesc(服务描述)
+ *     |											 |
+ * NewServer(创建服务端) -> NewService(创建服务) -> RegisterService(注册业务服务) -> Register(服务注册) -> InitPlugins(初始化插件) -> Serve / ServeHttp(启动服务)
+ *
+ * Server 是服务端，服务端的相关服务由 Service 实现。
+ *
+ */
 func NewServer(opt ...ServerOption) *Server {
-
+	/**
+	 * 使用选项模式：
+	 * 当使用默认配置的时候可以使用选项模式。
+	 * 选项模式是使用一个操作配置的指针函数，通过with系列函数改变默认的配置的模式
+	 */
 	s := &Server{
 		opts: &ServerOptions{},
 	}
 
+	/**
+	 * o() 为 gorpc.ServerOption:
+	 *
+	 * type ServerOption func(*ServerOptions)
+	 *
+	 * 迭代 opt 修改默认的 option 配置
+	 */
 	for _, o := range opt {
 		o(s.opts)
 	}
 
+	// 创建服务
 	s.service = NewService(s.opts)
 
+	/**
+	 * 插件注册
+	 *
+	 * 通过 import 注册相关的插件到 plugin.PluginMap 中
+	 * 如果 plugin.PluginMap 存在插件，把插件注册到Server中
+	 *
+	 */
 	for pluginName, plugin := range plugin.PluginMap {
 		if !containPlugin(pluginName, s.opts.pluginNames) {
 			continue
@@ -63,6 +103,7 @@ func containPlugin(pluginName string, plugins []string) bool {
 
 type emptyInterface interface{}
 
+// 注册业务服务
 func (s *Server) RegisterService(serviceName string, svr interface{}) error {
 
 	svrType := reflect.TypeOf(svr)
@@ -87,6 +128,7 @@ func (s *Server) RegisterService(serviceName string, svr interface{}) error {
 	return nil
 }
 
+// 通过反射回去服务的方法
 func getServiceMethods(serviceType reflect.Type, serviceValue reflect.Value) ([]*MethodDesc, error) {
 
 	var methods []*MethodDesc
@@ -134,6 +176,7 @@ func getServiceMethods(serviceType reflect.Type, serviceValue reflect.Value) ([]
 	return methods, nil
 }
 
+// 通过反射检查服务的方法是否为方法类型
 func checkMethod(method reflect.Type) error {
 
 	// params num must >= 2 , needs to be combined with itself
@@ -175,6 +218,7 @@ func checkMethod(method reflect.Type) error {
 	return nil
 }
 
+// 注册服务描述到服务中
 func (s *Server) Register(sd *ServiceDesc, svr interface{}) {
 	if sd == nil || svr == nil {
 		return
