@@ -18,6 +18,7 @@ import (
 )
 
 // Service defines a generic implementation interface for a specific Service
+// 通用的服务接口
 type Service interface {
 	Register(string, Handler)
 	Serve(*ServerOptions)
@@ -25,6 +26,7 @@ type Service interface {
 	Name() string
 }
 
+// 服务结构体
 type service struct {
 	svr         interface{}        // server
 	ctx         context.Context    // Each service is managed in one context
@@ -37,6 +39,7 @@ type service struct {
 }
 
 // ServiceDesc is a detailed description of a service
+// 服务描述 用来描述服务有那些方法和方法的类型
 type ServiceDesc struct {
 	Svr         interface{}
 	ServiceName string
@@ -45,14 +48,17 @@ type ServiceDesc struct {
 }
 
 // MethodDesc is a detailed description of a method
+// 方法描述
 type MethodDesc struct {
 	MethodName string
 	Handler    Handler
 }
 
 // Handler is the handler of a method
+// 服务的方法
 type Handler func(context.Context, interface{}, func(interface{}) error, []interceptor.ServerInterceptor) (interface{}, error)
 
+// 注册方法
 func (s *service) Register(handlerName string, handler Handler) {
 	if s.handlers == nil {
 		s.handlers = make(map[string]Handler)
@@ -60,6 +66,7 @@ func (s *service) Register(handlerName string, handler Handler) {
 	s.handlers[handlerName] = handler
 }
 
+// 启动服务
 func (s *service) Serve(opts *ServerOptions) {
 
 	s.opts = opts
@@ -87,6 +94,7 @@ func (s *service) Serve(opts *ServerOptions) {
 	<-s.ctx.Done()
 }
 
+// 关闭服务
 func (s *service) Close() {
 	s.closing = true
 	if s.cancel != nil {
@@ -95,10 +103,12 @@ func (s *service) Close() {
 	fmt.Println("service closing ...")
 }
 
+// 服务名称
 func (s *service) Name() string {
 	return s.serviceName
 }
 
+// 执行方法
 func (s *service) Handle(ctx context.Context, reqbuf []byte) ([]byte, error) {
 
 	// parse protocol header
